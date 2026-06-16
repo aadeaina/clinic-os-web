@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+db.sqlite3
+.venv/
+.env
+node_modules/
+.next/
+local.properties
+Config.xcconfig
+*.xcodeproj
+.gradle/
+build/

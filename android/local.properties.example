@@ -1,0 +1,4 @@
+# Copy to local.properties. Point sdk.dir at your Android SDK.
+sdk.dir=/Users/you/Library/Android/sdk
+# Android emulator reaches a local backend at 10.0.2.2 (not localhost).
+API_BASE=http://10.0.2.2:8000/api

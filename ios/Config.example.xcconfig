@@ -1,0 +1,2 @@
+// Copy to Config.xcconfig. iOS simulator reaches a local backend at localhost.
+API_BASE = http:/$()/localhost:8000/api

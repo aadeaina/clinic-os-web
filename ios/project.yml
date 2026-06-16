@@ -1,0 +1,25 @@
+# XcodeGen spec. Generate the Xcode project with:  xcodegen generate
+name: PatientApp
+options:
+  bundleIdPrefix: health.clinicos
+  deploymentTarget:
+    iOS: "16.0"
+settings:
+  base:
+    INFOPLIST_KEY_NSFaceIDUsageDescription: "Unlock to view your clinic messages."
+    INFOPLIST_KEY_UIApplicationSceneManifest_Generation: "YES"
+configFiles:
+  Debug: Config.xcconfig
+  Release: Config.xcconfig
+targets:
+  PatientApp:
+    type: application
+    platform: iOS
+    sources: [Sources]
+    info:
+      path: Info.plist
+      properties:
+        API_BASE: $(API_BASE)
+        NSFaceIDUsageDescription: "Unlock to view your clinic messages."
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true   # dev only: allows http://localhost backend

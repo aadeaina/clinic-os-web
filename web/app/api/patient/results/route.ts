@@ -1,0 +1,77 @@
+export const dynamic = "force-dynamic";
+
+export async function GET() {
+  const results = [
+    {
+      id:              "res-1",
+      test:            "Hemoglobin A1c",
+      date:            "June 10, 2026",
+      result:          "6.1",
+      unit:            "%",
+      reference_range: "< 5.7",
+      flag:            "high" as const,
+      reviewed_by:     "Dr. Sarah Chen",
+      reviewed_on:     "June 11, 2026",
+      note:            "Your A1c is slightly elevated, indicating prediabetes. I recommend dietary changes and increased physical activity. We will recheck in 3 months. Please schedule a nutrition counseling appointment.",
+    },
+    {
+      id:              "res-2",
+      test:            "CBC (Complete Blood Count)",
+      date:            "June 10, 2026",
+      result:          "Normal",
+      unit:            "",
+      reference_range: "See individual values",
+      flag:            "normal" as const,
+      reviewed_by:     "Dr. Sarah Chen",
+      reviewed_on:     "June 11, 2026",
+    },
+    {
+      id:              "res-3",
+      test:            "Lipid Panel — LDL",
+      date:            "June 10, 2026",
+      result:          "118",
+      unit:            "mg/dL",
+      reference_range: "< 100",
+      flag:            "high" as const,
+      reviewed_by:     "Dr. Sarah Chen",
+      reviewed_on:     "June 11, 2026",
+      note:            "Your LDL cholesterol is mildly elevated. I'd like to discuss lifestyle modifications at your next visit. No medication needed at this time.",
+    },
+    {
+      id:              "res-4",
+      test:            "TSH (Thyroid)",
+      date:            "June 10, 2026",
+      result:          "2.1",
+      unit:            "mIU/L",
+      reference_range: "0.4 – 4.0",
+      flag:            "normal" as const,
+      reviewed_by:     "Dr. Sarah Chen",
+      reviewed_on:     "June 11, 2026",
+    },
+    {
+      id:              "res-5",
+      test:            "BMP — Creatinine",
+      date:            "June 10, 2026",
+      result:          "0.9",
+      unit:            "mg/dL",
+      reference_range: "0.6 – 1.2",
+      flag:            "normal" as const,
+      reviewed_by:     "Dr. Sarah Chen",
+      reviewed_on:     "June 11, 2026",
+    },
+    {
+      id:              "res-6",
+      test:            "Vitamin D",
+      date:            "June 10, 2026",
+      result:          "18",
+      unit:            "ng/mL",
+      reference_range: "30 – 100",
+      flag:            "low" as const,
+      reviewed_by:     "Dr. Sarah Chen",
+      reviewed_on:     "June 11, 2026",
+      note:            "Your Vitamin D level is low. I'm recommending a daily supplement of 2000 IU. You can get this over the counter. We'll recheck in 6 months.",
+    },
+  ];
+
+  return Response.json({ results });
+}

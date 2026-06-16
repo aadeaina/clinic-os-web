@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 -m unittest tests.test_guardrails tests.test_schemas tests.test_tools -v)"
+    ]
+  }
+}

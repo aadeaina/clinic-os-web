@@ -1,0 +1,96 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ═══════════════════════════════════════════════════════
+   COLOR TOKENS  (space-separated RGB for Tailwind opacity)
+   ═══════════════════════════════════════════════════════ */
+
+:root {
+  /* ── Dark theme (default) ── */
+  --col-surface:  7 13 13;
+  --col-card:     12 20 20;
+  --col-elevated: 17 28 28;
+  --col-line:     26 47 47;
+  --col-line2:    36 63 63;
+  --col-body:     200 232 228;
+  --col-dim:      74 112 112;
+  --col-dim2:     122 168 160;
+
+  /* ── Accent ── */
+  --accent:        #14b8a6;
+  --accent-dim:    rgba(20,184,166,0.12);
+  --accent-border: rgba(20,184,166,0.30);
+
+  color-scheme: dark;
+}
+
+[data-theme="light"] {
+  --col-surface:  240 248 247;
+  --col-card:     255 255 255;
+  --col-elevated: 245 251 250;
+  --col-line:     212 227 225;
+  --col-line2:    186 210 207;
+  --col-body:     15 42 42;
+  --col-dim:      107 144 140;
+  --col-dim2:     74 112 112;
+  color-scheme: light;
+}
+
+/* Accent colour overrides */
+[data-accent="blue"]   { --accent: #3b82f6; --accent-dim: rgba(59,130,246,0.12); --accent-border: rgba(59,130,246,0.30); }
+[data-accent="purple"] { --accent: #8b5cf6; --accent-dim: rgba(139,92,246,0.12);  --accent-border: rgba(139,92,246,0.30);  }
+[data-accent="amber"]  { --accent: #f59e0b; --accent-dim: rgba(245,158,11,0.12); --accent-border: rgba(245,158,11,0.30); }
+
+/* ═══════════════════════════════════════════════════════
+   BASE STYLES
+   ═══════════════════════════════════════════════════════ */
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+
+body {
+  background-color: rgb(var(--col-surface));
+  color: rgb(var(--col-body));
+  font-family: Inter, system-ui, -apple-system, sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  /* background-image/size/repeat set dynamically by ThemeManager */
+  background-attachment: fixed;
+  background-size: cover;
+  background-position: center;
+}
+
+/* scrollbar */
+::-webkit-scrollbar       { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgb(var(--col-line2)); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: rgb(var(--col-dim)); }
+
+/* ═══════════════════════════════════════════════════════
+   ANIMATIONS
+   ═══════════════════════════════════════════════════════ */
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1;   transform: scale(1);    }
+  50%       { opacity: .35; transform: scale(.65); }
+}
+
+.pulse-dot {
+  display: inline-block;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+/* ═══════════════════════════════════════════════════════
+   BACKGROUND PRESETS  (applied via body style by ThemeManager)
+   ═══════════════════════════════════════════════════════ */
+
+/* Custom image overlay — semi-transparent cards let bg show through the padding */
+body.bg-custom .bg-card-overlay {
+  backdrop-filter: blur(0);
+}
