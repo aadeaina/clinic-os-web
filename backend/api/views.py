@@ -72,8 +72,13 @@ def _sse(steps):
     return resp
 
 
-@api_view(["GET"])
 def stream(request, session_id):
+    # Plain Django view, not @api_view: DRF's api_view runs content negotiation against the
+    # Accept header before the handler executes, and its default renderers don't include
+    # text/event-stream — so a real browser EventSource (which sends that Accept header) gets
+    # a 406 before ever reaching this function, even though it returns a raw SSE response.
+    if request.method != "GET":
+        return JsonResponse({"detail": 'Method "%s" not allowed.' % request.method}, status=405)
     if not Session.objects.filter(id=session_id).exists():
         raise Http404
     steps = list(Step.objects.filter(session_id=session_id).values_list("payload", flat=True))
