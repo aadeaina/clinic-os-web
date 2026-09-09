@@ -3,6 +3,7 @@ __pycache__/
 db.sqlite3
 .venv/
 .env
+.env.local
 node_modules/
 .next/
 local.properties

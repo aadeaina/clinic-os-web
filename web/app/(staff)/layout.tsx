@@ -62,7 +62,22 @@ async function LiveIndicator() {
   let activeCount = 0;
   try {
     const base = process.env.NEXT_PUBLIC_API_BASE ?? "/api";
-    const rows = await fetch(`http://localhost:3000${base}/sessions`, { cache: "no-store" })
+    const h = headers();
+    let url: string;
+    if (base.startsWith("/")) {
+      // Relative base (the Next.js app's own mock routes) — server-side fetch needs an
+      // absolute URL, so derive the current deployment's own origin from the incoming
+      // request instead of hardcoding localhost.
+      const host = h.get("x-forwarded-host") ?? h.get("host");
+      const protocol = h.get("x-forwarded-proto") ?? (process.env.NODE_ENV === "production" ? "https" : "http");
+      url = `${host ? `${protocol}://${host}` : ""}${base}/sessions`;
+    } else {
+      url = `${base}/sessions`;
+    }
+    const rows = await fetch(url, {
+      cache: "no-store",
+      headers: { cookie: h.get("cookie") ?? "" },
+    })
       .then((r) => r.ok ? r.json() : [])
       .catch(() => []);
     activeCount = (rows as { status: string }[]).filter((r) => r.status === "active").length;

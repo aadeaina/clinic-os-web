@@ -4,7 +4,7 @@ import { SESSION_COOKIE, verifyToken, canAccess, defaultRedirect } from "./lib/a
 
 const PUBLIC = ["/login", "/api/auth/login", "/api/auth/logout", "/api/auth/me"];
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (pathname.startsWith("/_next") || pathname === "/favicon.ico") {
@@ -16,7 +16,7 @@ export function middleware(request: NextRequest) {
   }
 
   const raw  = request.cookies.get(SESSION_COOKIE)?.value ?? "";
-  const user = raw ? verifyToken(raw) : null;
+  const user = raw ? await verifyToken(raw) : null;
 
   if (!user) {
     const res = NextResponse.redirect(new URL("/login", request.url));

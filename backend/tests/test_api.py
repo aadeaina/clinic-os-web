@@ -12,6 +12,8 @@ from django.test import TestCase
 from rest_framework import status
 from rest_framework.test import APITestCase
 
+from .base import AuthenticatedAPITestCase
+
 from core.models import PendingAction, Session, Step
 
 
@@ -29,10 +31,40 @@ def _post_event(client, text="Book an appointment please", channel="app",
 
 
 # ---------------------------------------------------------------------------
+# Authentication / authorization
+# ---------------------------------------------------------------------------
+
+class TestAuthentication(APITestCase):
+    """These deliberately use plain APITestCase (no bridge token attached by default)."""
+
+    def test_events_without_token_returns_401(self):
+        resp = _post_event(self.client)
+        self.assertEqual(resp.status_code, 401)
+
+    def test_sessions_without_token_returns_401(self):
+        self.assertEqual(self.client.get("/api/sessions").status_code, 401)
+
+    def test_garbage_token_returns_401(self):
+        self.client.credentials(HTTP_AUTHORIZATION="Bearer not-a-real-token")
+        self.assertEqual(self.client.get("/api/sessions").status_code, 401)
+
+    def test_patient_role_cannot_list_sessions(self):
+        from .auth_test_utils import auth_header
+        self.client.credentials(HTTP_AUTHORIZATION=auth_header(role="patient"))
+        self.assertEqual(self.client.get("/api/sessions").status_code, 403)
+
+    def test_patient_role_can_post_events(self):
+        from .auth_test_utils import auth_header
+        self.client.credentials(HTTP_AUTHORIZATION=auth_header(role="patient"))
+        resp = _post_event(self.client)
+        self.assertEqual(resp.status_code, 200)
+
+
+# ---------------------------------------------------------------------------
 # POST /api/events
 # ---------------------------------------------------------------------------
 
-class TestEventsEndpoint(APITestCase):
+class TestEventsEndpoint(AuthenticatedAPITestCase):
     def test_valid_event_returns_200(self):
         resp = _post_event(self.client)
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
@@ -81,8 +113,9 @@ class TestEventsEndpoint(APITestCase):
 # GET /api/sessions
 # ---------------------------------------------------------------------------
 
-class TestSessionsListEndpoint(APITestCase):
+class TestSessionsListEndpoint(AuthenticatedAPITestCase):
     def setUp(self):
+        super().setUp()
         resp = _post_event(self.client)
         self.session_id = resp.data["session_id"]
 
@@ -112,8 +145,9 @@ class TestSessionsListEndpoint(APITestCase):
 # GET /api/sessions/{id}
 # ---------------------------------------------------------------------------
 
-class TestSessionDetailEndpoint(APITestCase):
+class TestSessionDetailEndpoint(AuthenticatedAPITestCase):
     def setUp(self):
+        super().setUp()
         resp = _post_event(self.client)
         self.session_id = resp.data["session_id"]
 
@@ -158,8 +192,9 @@ class TestSessionDetailEndpoint(APITestCase):
 # GET /api/sessions/{id}/stream
 # ---------------------------------------------------------------------------
 
-class TestStreamEndpoint(APITestCase):
+class TestStreamEndpoint(AuthenticatedAPITestCase):
     def setUp(self):
+        super().setUp()
         resp = _post_event(self.client)
         self.session_id = resp.data["session_id"]
 
@@ -208,8 +243,9 @@ class TestStreamEndpoint(APITestCase):
 # POST /api/sessions/{id}/confirm
 # ---------------------------------------------------------------------------
 
-class TestConfirmEndpoint(APITestCase):
+class TestConfirmEndpoint(AuthenticatedAPITestCase):
     def setUp(self):
+        super().setUp()
         resp = _post_event(self.client, text="I need to book a follow-up next week")
         self.session_id = resp.data["session_id"]
         self.pending = PendingAction.objects.filter(
@@ -280,12 +316,30 @@ class TestConfirmEndpoint(APITestCase):
         after = Step.objects.filter(session_id=self.session_id).count()
         self.assertGreater(after, before)
 
+    def test_confirm_rejects_action_from_another_session(self):
+        """A pending action belonging to session A must not be committable via session B's
+        confirm endpoint, even by an authenticated caller who merely knows the action id."""
+        if self.pending is None:
+            self.skipTest("No pending action")
+        other = _post_event(self.client, text="what is my balance",
+                             patient_ref="ptok_other")
+        other_session_id = other.data["session_id"]
+
+        resp = self.client.post(
+            f"/api/sessions/{other_session_id}/confirm",
+            {"action_id": str(self.pending.id)}, format="json",
+        )
+        types = [s["type"] for s in resp.data["steps"]]
+        self.assertIn("escalate", types)
+        self.pending.refresh_from_db()
+        self.assertEqual(self.pending.state, "pending")
+
 
 # ---------------------------------------------------------------------------
 # GET /api/analytics/summary
 # ---------------------------------------------------------------------------
 
-class TestAnalyticsEndpoint(APITestCase):
+class TestAnalyticsEndpoint(AuthenticatedAPITestCase):
     def test_returns_200(self):
         self.assertEqual(self.client.get("/api/analytics/summary").status_code, 200)
 

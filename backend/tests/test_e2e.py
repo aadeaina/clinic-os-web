@@ -19,6 +19,8 @@ import json
 from rest_framework import status
 from rest_framework.test import APITestCase
 
+from .base import AuthenticatedAPITestCase
+
 from core.models import Message, PendingAction, Session, Step
 
 
@@ -52,10 +54,11 @@ def _step_types(client, session_id):
 # Scheduling E2E: POST event → stream → POST confirm
 # ---------------------------------------------------------------------------
 
-class TestSchedulingE2E(APITestCase):
+class TestSchedulingE2E(AuthenticatedAPITestCase):
     """Full two-phase scheduling round-trip through the HTTP API."""
 
     def setUp(self):
+        super().setUp()
         resp = _post(self.client, "I need to book a follow-up next week",
                      patient_ref="ptok_sched")
         self.assertEqual(resp.status_code, 200)
@@ -146,10 +149,11 @@ class TestSchedulingE2E(APITestCase):
 # Triage escalation E2E
 # ---------------------------------------------------------------------------
 
-class TestTriageEscalationE2E(APITestCase):
+class TestTriageEscalationE2E(AuthenticatedAPITestCase):
     """Urgent symptoms must escalate immediately — nothing booked, never contained."""
 
     def setUp(self):
+        super().setUp()
         resp = _post(self.client, "I have chest pain and shortness of breath",
                      patient_ref="ptok_triage")
         self.session_id = resp.data["session_id"]
@@ -188,7 +192,7 @@ class TestTriageEscalationE2E(APITestCase):
 # PHI redaction E2E
 # ---------------------------------------------------------------------------
 
-class TestPHIRedactionE2E(APITestCase):
+class TestPHIRedactionE2E(AuthenticatedAPITestCase):
     """Raw PHI must never appear in the database or in any API response."""
 
     RAW_NAME = "Jane Doe"
@@ -197,6 +201,7 @@ class TestPHIRedactionE2E(APITestCase):
     RAW_TEXT = f"My name is {RAW_NAME}, call me at {RAW_PHONE} or {RAW_EMAIL}"
 
     def setUp(self):
+        super().setUp()
         resp = _post(self.client, self.RAW_TEXT, patient_ref="ptok_phi")
         self.session_id = resp.data["session_id"]
 
@@ -239,10 +244,11 @@ class TestPHIRedactionE2E(APITestCase):
 # Multi-turn session E2E
 # ---------------------------------------------------------------------------
 
-class TestMultiTurnE2E(APITestCase):
+class TestMultiTurnE2E(AuthenticatedAPITestCase):
     """Posting subsequent events to the same session_id extends the same session."""
 
     def setUp(self):
+        super().setUp()
         self.patient = "ptok_multi"
         resp = _post(self.client, "Book an appointment please", patient_ref=self.patient)
         self.session_id = resp.data["session_id"]
@@ -283,7 +289,7 @@ class TestMultiTurnE2E(APITestCase):
 # Intent routing E2E — one smoke test per specialist intent
 # ---------------------------------------------------------------------------
 
-class TestAllIntentsE2E(APITestCase):
+class TestAllIntentsE2E(AuthenticatedAPITestCase):
     """Each intent routes to the expected agent and produces a contained or escalated session."""
 
     def _check(self, text, expected_intent, expect_contained=True):
@@ -321,7 +327,7 @@ class TestAllIntentsE2E(APITestCase):
 # Analytics E2E
 # ---------------------------------------------------------------------------
 
-class TestAnalyticsE2E(APITestCase):
+class TestAnalyticsE2E(AuthenticatedAPITestCase):
     """Analytics metrics reflect session outcomes correctly after real sessions."""
 
     def test_empty_db_returns_zero_metrics(self):

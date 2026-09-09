@@ -14,6 +14,10 @@ const PATIENT_DEMO = [
   { role: "Patient", email: "john.doe@email.com", password: "Patient@123" },
 ];
 
+// Off by default in any deployment that doesn't explicitly opt in — flip
+// NEXT_PUBLIC_SHOW_DEMO_CREDENTIALS=1 for demo/sales environments only.
+const SHOW_DEMO_CREDENTIALS = process.env.NEXT_PUBLIC_SHOW_DEMO_CREDENTIALS === "1";
+
 export default function LoginPage() {
   const router   = useRouter();
   const [mode, setMode]         = useState<"staff" | "patient">("staff");
@@ -156,6 +160,7 @@ export default function LoginPage() {
         </div>
 
         {/* Demo credentials */}
+        {SHOW_DEMO_CREDENTIALS && (
         <div className="mt-3 rounded-xl border border-line bg-card/60 p-4 backdrop-blur">
           <div className="mb-2.5 flex items-center gap-2">
             <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-dim">Demo credentials</div>
@@ -188,6 +193,7 @@ export default function LoginPage() {
           </table>
           <p className="mt-2 text-[9px] text-dim">Click any row to auto-fill.</p>
         </div>
+        )}
       </div>
     </div>
   );

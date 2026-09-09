@@ -14,7 +14,7 @@ output once you move the engine to async.
 import json
 
 from django.http import StreamingHttpResponse, JsonResponse, Http404
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 
 from core.stores import DjangoSessionStore
@@ -23,6 +23,9 @@ from integrations.ehr.mock import MockEHRAdapter
 from orchestration import engine
 from orchestration.llm import get_provider
 from orchestration.schemas import ConversationEvent
+
+from .authentication import BridgeTokenAuthentication, verify_bridge_token
+from .permissions import IsStaff
 
 _PROVIDER = get_provider()
 _EHR = MockEHRAdapter()
@@ -77,8 +80,23 @@ def stream(request, session_id):
     # Accept header before the handler executes, and its default renderers don't include
     # text/event-stream — so a real browser EventSource (which sends that Accept header) gets
     # a 406 before ever reaching this function, even though it returns a raw SSE response.
+    # Being a plain view also means DRF's DEFAULT_AUTHENTICATION/PERMISSION_CLASSES never run
+    # here, so the bridge token is checked by hand instead.
     if request.method != "GET":
         return JsonResponse({"detail": 'Method "%s" not allowed.' % request.method}, status=405)
+    # Browser EventSource can't set custom headers, so this one endpoint also accepts the
+    # bridge token as a short-lived query param (?token=...) in addition to the standard
+    # Authorization header used everywhere else.
+    try:
+        principal = BridgeTokenAuthentication().authenticate(request)
+    except Exception:
+        principal = None
+    if principal is None and request.GET.get("token"):
+        principal = (verify_bridge_token(request.GET["token"]), None)
+        if principal[0] is None:
+            principal = None
+    if principal is None:
+        return JsonResponse({"detail": "Authentication credentials were not provided."}, status=401)
     if not Session.objects.filter(id=session_id).exists():
         raise Http404
     steps = list(Step.objects.filter(session_id=session_id).values_list("payload", flat=True))
@@ -95,6 +113,7 @@ def confirm(request, session_id):
 
 
 @api_view(["GET"])
+@permission_classes([IsStaff])
 def sessions(request):
     rows = []
     for s in Session.objects.order_by("-created")[:100]:
@@ -109,6 +128,7 @@ def sessions(request):
 
 
 @api_view(["GET"])
+@permission_classes([IsStaff])
 def session_detail(request, session_id):
     s = Session.objects.filter(id=session_id).first()
     if not s:
@@ -125,6 +145,7 @@ def session_detail(request, session_id):
 
 
 @api_view(["GET"])
+@permission_classes([IsStaff])
 def analytics_summary(request):
     total = Session.objects.count()
     contained = Session.objects.filter(contained=True).count()

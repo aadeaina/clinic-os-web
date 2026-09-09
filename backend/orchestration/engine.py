@@ -122,13 +122,21 @@ def run_turn(event: ConversationEvent, *, provider, store: SessionStore,
 def confirm(session_id: str, action_id: str, *, store: SessionStore,
             ehr: EHRAdapter) -> Iterator[StepEvent]:
     pending = store.get_pending(action_id)
-    if not pending or pending["state"] != "pending":
+    if (not pending or pending["state"] != "pending"
+            or str(pending["session_id"]) != str(session_id)):
+        # Either unknown/already-used, or it belongs to a different session — treat both
+        # the same way so this endpoint can't be used to probe for valid action ids.
         yield ev_escalate("invalid_or_used_confirmation")
         return
 
     session = store.get_session(session_id) or {}
     sess_patient = session.get("patient_ref", "patient")
     tool = tool_by_name(pending["agent_key"], pending["name"])
+    if tool is None:
+        store.set_status(session_id, "escalated")
+        store.set_contained(session_id, False)
+        yield ev_escalate("unknown_tool")
+        return
     ctx = _ctx(ehr, session.get("clinic_id", ""), sess_patient, lambda s: s)
 
     output = tool.run(pending["args"], ctx)

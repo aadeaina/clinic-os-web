@@ -1,15 +1,36 @@
 import { Step, SessionRow, AnalyticsSummary } from "./types";
 import { getApiBase } from "./settings-store";
 
+// The Next.js app's own /api/* routes (dataSource: "staged") are same-origin and are
+// already gated by middleware's session-cookie check — no extra header needed there.
+// A direct call to the Django backend (dataSource: "real") is cross-origin and Django
+// has no notion of the Next.js session cookie, so those calls carry a short-lived
+// bridge token instead (see lib/backend-token.ts and api/authentication.py).
+let cachedToken: { value: string; expiresAt: number } | null = null;
+
+async function getBridgeAuthHeader(base: string): Promise<Record<string, string>> {
+  if (base === "/api") return {};
+  const now = Date.now();
+  if (!cachedToken || cachedToken.expiresAt - 10_000 < now) {
+    const r = await fetch("/api/backend-token");
+    if (!r.ok) return {};
+    const { token, expires_in } = await r.json() as { token: string; expires_in: number };
+    cachedToken = { value: token, expiresAt: now + expires_in * 1000 };
+  }
+  return { Authorization: `Bearer ${cachedToken.value}` };
+}
+
 async function get<T>(path: string): Promise<T> {
-  const r = await fetch(`${getApiBase()}${path}`);
+  const base = getApiBase();
+  const r = await fetch(`${base}${path}`, { headers: await getBridgeAuthHeader(base) });
   if (!r.ok) throw new Error(`GET ${path} → ${r.status}`);
   return r.json();
 }
 async function post<T>(path: string, body: unknown): Promise<T> {
-  const r = await fetch(`${getApiBase()}${path}`, {
+  const base = getApiBase();
+  const r = await fetch(`${base}${path}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...await getBridgeAuthHeader(base) },
     body: JSON.stringify(body),
   });
   if (!r.ok) throw new Error(`POST ${path} → ${r.status}`);
@@ -25,11 +46,24 @@ export async function postEvent(input: {
 }
 
 export function streamSession(sessionId: string, onStep: (s: Step) => void, onDone: () => void) {
-  const es = new EventSource(`${getApiBase()}/sessions/${sessionId}/stream`);
-  es.onmessage = (e) => { try { onStep(JSON.parse(e.data)); } catch {} };
-  es.addEventListener("done", () => { es.close(); onDone(); });
-  es.onerror = () => { es.close(); onDone(); };
-  return () => es.close();
+  const base = getApiBase();
+  let cancelled = false;
+  let closeFn: () => void = () => { cancelled = true; };
+
+  // Browser EventSource can't set an Authorization header, so against the real Django
+  // backend the bridge token is passed as a short-lived query param instead (the
+  // backend accepts both for this one endpoint — see api/views.py:stream).
+  getBridgeAuthHeader(base).then(({ Authorization }) => {
+    if (cancelled) return;
+    const tokenParam = Authorization ? `?token=${encodeURIComponent(Authorization.slice(7))}` : "";
+    const es = new EventSource(`${base}/sessions/${sessionId}/stream${tokenParam}`);
+    es.onmessage = (e) => { try { onStep(JSON.parse(e.data)); } catch {} };
+    es.addEventListener("done", () => { es.close(); onDone(); });
+    es.onerror = () => { es.close(); onDone(); };
+    closeFn = () => es.close();
+  });
+
+  return () => closeFn();
 }
 
 export async function confirmAction(sessionId: string, actionId: string): Promise<{ steps: Step[] }> {

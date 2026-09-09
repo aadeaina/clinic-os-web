@@ -19,6 +19,10 @@ class SaveIntakeField(Tool):
                     "properties": {"field": {"type": "string"}, "value": {"type": "string"}},
                     "required": ["field", "value"]}
     writes = True
+    requires_confirmation = True
+
+    def preview(self, args, ctx: ToolContext) -> str:
+        return f"Save {args.get('field', 'field')} = {args.get('value', '')}"
 
     def run(self, args, ctx: ToolContext) -> dict:
         return {"saved": {args["field"]: args["value"]}}
